@@ -101,15 +101,30 @@ router.post('/', (req: Request<Record<string, unknown>, Record<string, unknown>,
       }
 
       if (req.body.layout) {
-        const filePath: string = path.resolve(req.body.layout).toLowerCase()
-        const isForbiddenFile: boolean = (filePath.includes('ftp') || filePath.includes('ctf.key') || filePath.includes('encryptionkeys'))
+        if (typeof req.body.layout !== 'string') {
+          next(new Error('Invalid layout parameter'))
+          return
+        }
+        let layoutStr: string = req.body.layout
+        try {
+          layoutStr = decodeURIComponent(layoutStr)
+        } catch (e) {
+          // ignore decode error and use raw layout
+        }
+        const normalizedLayout = layoutStr.split('\\').join('/')
+        const viewsDir = path.resolve(__dirname, '../views')
+        const viewsDirWithSlash = viewsDir.endsWith(path.sep) ? viewsDir : viewsDir + path.sep
+        const filePath = path.resolve(viewsDir, normalizedLayout)
+        
+        const isWithinViews = filePath === viewsDir || filePath.startsWith(viewsDirWithSlash)
+        const isForbiddenFile: boolean = !isWithinViews || (filePath.toLowerCase().includes('ftp') || filePath.toLowerCase().includes('ctf.key') || filePath.toLowerCase().includes('encryptionkeys'))
         if (!isForbiddenFile) {
           res.render('dataErasureResult', {
             ...req.body,
             ...themeVars
           }, (error, html) => {
             if (!html || error) {
-              next(new Error(error.message))
+              next(new Error(error?.message || 'Rendering error'))
             } else {
               const sendlfrResponse: string = html.slice(0, 100) + '......'
               res.send(sendlfrResponse)

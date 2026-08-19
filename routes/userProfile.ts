@@ -58,6 +58,10 @@ export function getUserProfile () {
         if (!code) {
           throw new Error('Username is null')
         }
+        const safeExpressionRegex = /^(?:[0-9+\-*/%()\s]|'[^'\\\\]*'|"[^"\\\\]*")+$/
+        if (!safeExpressionRegex.test(code)) {
+          throw new Error('Unsafe expression')
+        }
         username = eval(code) // eslint-disable-line no-eval
       } catch (err) {
         username = '\\' + username
